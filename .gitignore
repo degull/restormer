@@ -1,10 +1,8 @@
-.ipynb_checkpoints/
-*.pyc
-*.png
-*.tif
-*.jpg
-*.pth
-*.mat
-*.npy
-.DS_Store
+# Datasets 폴더 무시
+Datasets/
 
+# 사전학습된 모델 무시
+pretrained_models/
+
+# 결과 폴더 무시
+results/
