@@ -65,7 +65,7 @@ from natsort import natsorted
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
 def rgb2y(img_rgb):
-    """CV2 BGR→RGB 후 YCbCr 변환하여 Y 채널만 반환 (실수형 0-255)."""
+    """RGB → Y 채널 추출 (float32, 0~255 기준)"""
     img_rgb = img_rgb.astype(np.float32)
     y = 0.257 * img_rgb[..., 2] + 0.504 * img_rgb[..., 1] + 0.098 * img_rgb[..., 0] + 16
     return y
@@ -73,21 +73,36 @@ def rgb2y(img_rgb):
 def read_img(fp):
     bgr = cv2.imread(fp, cv2.IMREAD_COLOR)
     if bgr is None:
-        raise FileNotFoundError(fp)
+        raise FileNotFoundError(f"이미지를 불러올 수 없습니다: {fp}")
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
     return rgb
 
 def avg_metrics(ref_dir, cmp_dir):
-    ref_files = natsorted(glob(os.path.join(ref_dir, "*.png")) +
-                          glob(os.path.join(ref_dir, "*.jpg")))
-    cmp_files = natsorted(glob(os.path.join(cmp_dir, "*.png")) +
-                          glob(os.path.join(cmp_dir, "*.jpg")))
-    assert len(ref_files) == len(cmp_files), "ref/cmp 개수 불일치"
+    ref_files = natsorted(glob(os.path.join(ref_dir, "*.png")) + glob(os.path.join(ref_dir, "*.jpg")))
+    cmp_files = natsorted(glob(os.path.join(cmp_dir, "*.png")) + glob(os.path.join(cmp_dir, "*.jpg")))
+
+    # 🔍 파일명 기준 일치 여부 확인
+    ref_names = sorted([os.path.basename(f) for f in ref_files])
+    cmp_names = sorted([os.path.basename(f) for f in cmp_files])
+
+    if ref_names != cmp_names:
+        print(f"\n❌ 파일 수 또는 이름이 일치하지 않습니다!")
+        print(f"GT ({len(ref_names)}개): {ref_names[:5]} ...")
+        print(f"CMP({len(cmp_names)}개): {cmp_names[:5]} ...")
+        missing_in_cmp = set(ref_names) - set(cmp_names)
+        missing_in_ref = set(cmp_names) - set(ref_names)
+        if missing_in_cmp:
+            print("⚠️ 복원 결과에 빠진 파일:", missing_in_cmp)
+        if missing_in_ref:
+            print("⚠️ GT에 빠진 파일:", missing_in_ref)
+        raise AssertionError("ref/cmp 개수 또는 이름 불일치")
 
     psnr_list, ssim_list = [], []
+
     for rf, cf in zip(ref_files, cmp_files):
         ref = rgb2y(read_img(rf))
         cmp = rgb2y(read_img(cf))
+
         if ref.shape != cmp.shape:
             cmp = cv2.resize(cmp, (ref.shape[1], ref.shape[0]), interpolation=cv2.INTER_LINEAR)
 
@@ -105,11 +120,19 @@ def main():
         inp  = f"{root}/Datasets/{d}/test/rain"
         out  = f"{root}/results/{d}"
 
-        psnr_in, ssim_in = avg_metrics(gt, inp)
-        psnr_out, ssim_out = avg_metrics(gt, out)
+        print(f"\n🔍 [{d.upper()}] 평가 시작:")
 
-        print(f"\n[{d.upper()}]  입력→GT  PSNR {psnr_in:.2f}  SSIM {ssim_in:.4f}")
-        print(f"[{d.upper()}]  복원→GT PSNR {psnr_out:.2f}  SSIM {ssim_out:.4f}")
+        try:
+            psnr_in, ssim_in = avg_metrics(gt, inp)
+            print(f"📥 입력 → GT  PSNR: {psnr_in:.2f} dB  SSIM: {ssim_in:.4f}")
+        except Exception as e:
+            print(f"⚠️ 입력 평가 중 오류 발생: {e}")
+
+        try:
+            psnr_out, ssim_out = avg_metrics(gt, out)
+            print(f"📤 복원 → GT PSNR: {psnr_out:.2f} dB  SSIM: {ssim_out:.4f}")
+        except Exception as e:
+            print(f"⚠️ 복원 평가 중 오류 발생: {e}")
 
 if __name__ == "__main__":
     main()

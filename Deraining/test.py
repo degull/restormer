@@ -37,11 +37,12 @@ def load_checkpoint(model: nn.Module, ckpt_path: str, strict: bool = True) -> No
 
 def parse_args():
     p = argparse.ArgumentParser(description="Restormer Deraining Inference")
-    p.add_argument("--input_dir",  type=str, default="./Datasets",
-                   help="Root folder that contains each dataset sub-folder")
+    p.add_argument("--input_dir", type=str, default="E:/Restormer/Deraining/Datasets",
+                help="Root folder that contains each dataset sub-folder")
     p.add_argument("--result_dir", type=str, default="./results",
                    help="Folder to save restoration results")
-    p.add_argument("--weights",    type=str, default="./pretrained_models/deraining.pth",
+    p.add_argument("--weights", type=str, default="E:/Restormer/Deraining/pretrained_models/deraining.pth",
+
                    help="Path to pretrained Restormer weights")
     p.add_argument("--yaml",       type=str, default=None,
                    help="Network config YAML; if omitted, <script>/Options/Deraining_Restormer.yml 사용")
